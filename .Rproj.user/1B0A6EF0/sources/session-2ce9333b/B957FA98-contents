@@ -7,11 +7,9 @@ dev.off()
 
 # load libraries
 library(dplyr)
-#library(stats)
 library(tidyverse)
 library(gridExtra)      # for boxplot arrangement
 library(reshape2)       # for correlation plot
-#library(rpart)
 library(tree)
 library(randomForest)
 library(gbm)
@@ -379,66 +377,61 @@ cutree(hc.complete, 4)
 y <- cutree(hc.complete, 8)
 plot(y)
 
-# using correlation as a distance measure instead of euclidean distance
+# hierarchical clustering using a correlation-based dissimilarity matrix 
+# instead of the default Euclidean distance measure as above
 ?dist
-correlation_matrix <- as.matrix(cor(employee, method = "pearson"))
 
-dissimilarity_matrix <- as.matrix(1-abs(correlation_matrix))
+# create dissimilarity matrix using correlation matrix from before
+dissimilarity_matrix <- as.matrix(1-abs(corr_mat))
 par(mfrow = c(1,3))
 
-hc6 <- hclust(as.dist(dissimilarity_matrix), method = "complete")
-plot(hc6, main = "Hierarchical Clustering with correlation - Scaled Complete")
+hc.complete.corr <- hclust(as.dist(dissimilarity_matrix), method = "complete")
+plot(hc.complete.corr, main = "Hierarchical Clustering with correlation - Scaled Complete")
 
-hc7 <- hclust(as.dist(dissimilarity_matrix), method = "single")
-plot(hc7, main = "Hierarchical Clustering with correlation - Scaled Single")
+hc.average.corr <- hclust(as.dist(dissimilarity_matrix), method = "average")
+plot(hc.average.corr, main = "Hierarchical Clustering with correlation - Scaled Average")
 
-hc8 <- hclust(as.dist(dissimilarity_matrix), method = "average")
-plot(hc8, main = "Hierarchical Clustering with correlation - Scaled Average")
+hc.single.corr <- hclust(as.dist(dissimilarity_matrix), method = "single")
+plot(hc.single.corr, main = "Hierarchical Clustering with correlation - Scaled Single")
   
-# outputs of clusters
-cutree(hc6, k = 5)
-cutree(hc7, k = 5)
-cutree(hc8, k = 5)
+# outputs of clusters of similar variables
+cutree(hc.complete.corr, k = 5)
+cutree(hc.average.corr, k = 5)
+cutree(hc.single.corr, k = 5)
+
+# plot threshold to identify clusters
+par(mfrow = c(1,1))
+plot(hc.complete.corr, labels = colnames(dissimilarity_matrix))
+abline(h = 0.982, col = 'violet')
 
 
-# REPLACING FOR NO MODULIUS
+# not using absolute value creates a similarity matrix???
+# different dendograms to one above
 dissimilarity_matrix_2 <- as.matrix(1-correlation_matrix)
   
 hc9 <- hclust(as.dist(dissimilarity_matrix_2), method = "complete")
-plot(hc6, main = "Hierarchical Clustering with correlation - Scaled Complete")
+plot(hc9, main = "Hierarchical Clustering with correlation - Scaled Complete")
 
 hc10 <- hclust(as.dist(dissimilarity_matrix_2), method = "single")
-plot(hc7, main = "Hierarchical Clustering with correlation - Scaled Single")
+plot(hc10, main = "Hierarchical Clustering with correlation - Scaled Single")
 
 hc11 <- hclust(as.dist(dissimilarity_matrix_2), method = "average")
-plot(hc8, main = "Hierarchical Clustering with correlation - Scaled Average")
+plot(hc11, main = "Hierarchical Clustering with correlation - Scaled Average")
 
-a <- cutree(hc9, k = 5)
-b <- cutree(hc10, k = 5)
-c <- cutree(hc11, k = 5)
+# a <- cutree(hc9, k = 5)
+# b <- cutree(hc10, k = 5)
+# c <- cutree(hc11, k = 5)
 
-tb <- table(c(a,b,c, colnames(dissimilarity_matrix)))
-view(tb)
-
-par(mfrow = c(1,1))
-plot(hc9, labels = colnames(dissimilarity_matrix))
-abline(h = 0.95, col = 'paleredviolet4')
+# tb <- table(c(a,b,c, colnames(dissimilarity_matrix)))
+# view(tb)
+# 
+# par(mfrow = c(1,1))
+# plot(hc9, labels = colnames(dissimilarity_matrix))
+# abline(h = 0.95, col = 'paleredviolet4')
 
 # Inference ---------------------------------------------------------------
-# 08 examples for help with this
 
-# # removing other satisfaction scores as they may be correlated with overall satisfaction
-# 
-# # remove unnecessary variables which don't contribute to satisfaction score
-# employee <- employee %>%
-#   select(-EducationTypeEconomics, - `EducationTypeBio-technology`, 
-#          -`EducationTypePhycology / Behavior Sciences`, -`EducationTypeMarketing / Finance`,
-#          - DepartmentBusinessDevelopment, -DepartmentClientSolutions,
-#          - DepartmentSupport)
-# 
-# employee_factor <- employee_factor %>%
-#   select(-EducationType, -Department)
-
+# removing variables from exploration part...
 
 # now, we fit a decision tree explaining the overall employee satisfaction score 
 # variables with all other variables in the employee dataset
