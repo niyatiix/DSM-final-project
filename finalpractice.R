@@ -153,4 +153,11 @@ plot(hc9, labels = colnames(dissimilarity_matrix))
 abline(h = 0.95, col = 'paleredviolet4')
 
 
+features <- c("Overall_SatisfactionScore", "Age", "BillingRate", "DistanceToOffice",, "Gender",
+              "LastSalaryHike", "MaritalStatus", "MonthlyIncome",
+              "PerformanceReview", "PotentialReview", "TotalCompanies",
+              "TotalExperience", "Traveltype_last_year", "Years_at_Company",
+              "Years_InCurrentRole", "Overall_SatisfactionScore")
+
+
 

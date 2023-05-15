@@ -3,7 +3,7 @@
     "path": "~/Documents/GitHub/DSM-final-project/final_script.R",
     "project_path": "final_script.R",
     "type": "r_source",
-    "hash": "0",
+    "hash": "3917198714",
     "contents": "",
     "dirty": false,
     "created": 1684173511167.0,
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "441,10",
-        "scrollLine": "427"
+        "cursorPosition": "498,16",
+        "scrollLine": "472"
     },
-    "folds": "128|17|294|0|\n",
-    "lastKnownWriteTime": 1684186023,
+    "folds": "104|21|127|0|\n128|17|294|0|\n295|14|353|0|\n354|26|430|0|\n",
+    "lastKnownWriteTime": 1684188297,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1684186023807,
+    "last_content_update": 1684188297893,
     "read_only": false,
     "read_only_alternatives": []
 }

@@ -435,36 +435,44 @@ plot(hc11, main = "Hierarchical Clustering with correlation - Scaled Average")
 
 # now, we fit a decision tree explaining the overall employee satisfaction score 
 # variables with all other variables in the employee dataset
-features <- c("Age", "BillingRate", "DistanceToOffice", "Education", "Gender",
-              "LastSalaryHike", "MaritalStatus", "MonthlyIncome",
-              "PerformanceReview", "PotentialReview", "TotalCompanies",
-              "TotalExperience", "Traveltype_last_year", "Years_at_Company",
-              "Years_InCurrentRole", "Overall_SatisfactionScore")
-# set.seed(10493638)
+
+# set seed for reproducibility
+set.seed(10493638)
+# 70% of data randomly sampled into training
 train_index <- sample(nrow(employee_factor), 0.7 * nrow(employee_factor))
-train <- employee_factor[train_index, features]
-test <- employee_factor[-train_index, features]
+# creating train & test subset 
+train <- employee_factor[train_index, ]
+test <- employee_factor[-train_index, ]
 
-# decision Tree
-tree_model <- rpart(Overall_SatisfactionScore ~ ., data = train)
+# decision tree
+tree_model <- tree(Overall_SatisfactionScore ~ ., data = train)
 tree_model2 <- tree(Overall_SatisfactionScore ~ ., data = employee_factor)
+# decision tree summary & plot
+summary(tree_model)
+plot(tree_model)
+text(tree_model, pretty = 0)
+summary(tree_model2)
+plot(tree_model2)
+text(tree_model2, pretty = 0)
 
-# decision tree using data with passive filtered out
-tree_model3 <- tree(overall_satisfaction ~ ., data = employee)
-?tree
 
 # random Forest
 rf_model <- randomForest(Overall_SatisfactionScore ~ ., 
                          data = train, 
-                         ntree = 500)
+                         ntree = 300)
 
-rf_model2 <- randomForest(overall_satisfaction ~ ., 
+rf_model2 <- randomForest(Overall_SatisfactionScore ~ ., 
                          data = employee_factor, 
-                         ntree = 500)
+                         ntree = 300)
+# random forest plot
+importance(rf_model)
+order(rf_model$importance)
+plot(rf_model)
 
-rf_model3 <- randomForest(overall_satisfaction ~ ., 
-                          data = employee, 
-                          ntree = 500)
+importance(rf_model2)
+order(rf_model2$importance)
+plot(rf_model2)
+
 
 # gradient Boosting
 gbm_model <- gbm(Overall_SatisfactionScore ~ ., 
@@ -472,39 +480,10 @@ gbm_model <- gbm(Overall_SatisfactionScore ~ .,
                  n.trees = 500, 
                  interaction.depth = 3)
 
-gbm_model2 <- gbm(MonthlyIncome ~ ., 
+gbm_model2 <- gbm(Overall_SatisfactionScore ~ ., 
                  data = employee_factor, 
                  n.trees = 500, 
                  interaction.depth = 3)
-
-gbm_model3 <- gbm(overall_satisfaction ~ ., 
-                  data = employee, 
-                  n.trees = 500, 
-                  interaction.depth = 3)
-
-# decision tree summary & plot
-summary(tree_model)
-plot(tree_model)
-summary(tree_model2)
-plot(tree_model2)
-text(tree_model2, pretty = 0)
-
-# tree model
-summary(tree_model3)
-plot(tree_model3)
-text(tree_model3, pretty = 0)
-
-# random forest plot
-importance(rf_model)
-plot(rf_model)
-
-importance(rf_model2)
-order(rf_model2$importance)
-plot(rf_model2)
-
-importance(rf_model3)
-order(rf_model3$importance)
-plot(rf_model3)
 
 # gradient Boosting
 summary(gbm_model)
@@ -518,17 +497,3 @@ plot(gbm_model2)
 summary(gbm_model3)
 plot(gbm_model3, i.var = "overall_satisfaction")
 plot(gbm_model3)
-
-# !!!!! except for .(variables...)
-tree.employee <- tree(Overall_SatisfactionScore ~., employee_factor) # use tree function from the tree package
-summary(tree.employee) # misclassification error is ......% (on training data)
-plot(tree.employee)    # plot tree
-text(tree.employee)    # add labels to tree
-tree.employee          # more information about the tree
-
-
-
-# The 'twist' -------------------------------------------------------------
-
-# bootstrapping as dataset is small
-# ridge or lasso etc

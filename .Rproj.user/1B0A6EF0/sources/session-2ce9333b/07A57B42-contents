@@ -1,0 +1,75 @@
+## Titanic Data can be found here: https://www.kaggle.com/c/titanic
+
+## SibSp = # of siblings/spouses on board
+## ParCh = # of parents/children on board
+## 0 = no family
+
+## Housekeeping
+pacman::p_load(MASS, tidyverse)
+
+## Load the train and test datasets
+train <- read.csv("train.csv")
+test <- read.csv("test.csv")
+
+## Check the data
+glimpse(train) # Check the data
+glimpse(test) # Note that there's no survival data in the test object!
+
+## Check the DV in the training dataset
+table(train$Survived)
+prop.table(table(train$Survived))
+
+## Fit a Logistic Regression
+log.fit <- glm(Survived ~ Pclass + Sex + Fare + Embarked, 
+               family = "binomial", 
+               data = train)
+summary(log.fit)
+
+## Let's revise the model for a better fit
+log.fit <- glm(Survived ~ Pclass + Sex, 
+               family = "binomial", 
+               data = train)
+summary(log.fit)
+
+## Make predictions, check accuracy
+train$prob <- predict(log.fit, newdata = train, type = "response")
+train$pred <- ifelse(train$prob > 0.5, 1 , 0)
+table(train$pred, train$Survived)  # Check the counts
+prop.table(table(train$pred, train$Survived))  # Check the proportions
+
+## % Correct?  (Diagonals)
+tr.correct <- (468 + 233) / 891
+tr.correct
+
+## % Incorrect?  (Off-Diagonals)
+tr.incorrect <- 1 - tr.correct
+tr.incorrect
+
+## How would we apply this to test data?
+test$prob <- predict(log.fit, newdata = test, type = "response")
+test$pred <- ifelse(test$prob > 0.5, 1 , 0)
+table(test$pred)
+
+## LDA
+lda.fit <- lda(Survived ~ Pclass + Sex, data = train)
+lda.fit
+
+## Predicting training results
+train.pred.lda <- predict(lda.fit, data = train)
+table(Predicted = train.pred.lda$class, Survived = train$Survived)
+
+## LDA train correct?
+lda.tr.correct <- (468 + 233) / 891
+lda.tr.correct
+
+## QDA
+qda.fit <- qda(Survived ~ Pclass + Sex, data = train)
+qda.fit
+
+## Predicting training results
+train.pred.qda <- predict(qda.fit, data = train)
+table(Predicted = train.pred.qda$class, Survived = train$Survived)
+
+## QDA train correct?
+qda.tr.correct <- (468 + 233) / 891
+qda.tr.correct
