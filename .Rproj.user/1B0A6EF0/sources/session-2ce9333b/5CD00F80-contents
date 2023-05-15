@@ -1,0 +1,170 @@
+### DATA SCIENCE MODELLING - WEEK 9: UNSUPERVISED LEARNING
+#
+# R examples from Chapter 10 of the book
+# "An Introduction to Statistical Learning with Applications in R"
+# (some explanations and modifications added by Andras Voros)
+#
+###
+
+### INSTRUCTIONS: Try out and aim to understand the commands in this script.
+#                 This will help you to solve the practical exercises and
+#                 be able to use the methods on your own.
+#                 Extensive notes are provided to help your learning.
+#                 If you find something unclear, feel free to ask about it
+#                 in the week's forum or in the live lecture session.
+
+### CONTENTS
+#   0. Install/load packages
+#   1. The datasets
+#   2. Principal Components Analysis (PCA)
+#   3. K-Means Clustering
+#   4. Hierarchical Clustering
+
+
+
+### Chapter 10: Unsupervised Learning
+
+
+## 0. Install and load required packages
+
+# actually, we don't need any additional packages to carry out PCA and clutser analysis
+# functions implementing the methods are available in the basic set of packages loaded when
+# R starts up
+
+
+## 1. The datasets
+
+# a) for PCA, we use the USArrests dataset (a dataset that comes with the default R installation),
+# which contains infomration about four variables related to violent crime rates in US states
+
+# let's inspect the data object a little bit
+?USArrests # help page explaining what is exactly in the dataset
+class(USArrests) # it's a data frame object as usual
+dim(USArrests) # 50 observations and 4 variables
+names(USArrests) # variable names
+head(USArrests) # look at the first few rows
+
+# b) for cluster analysis, we will use a small dataset we simulate on the spot
+
+# let's begin the examples
+
+
+## 2. Principal Components Analysis (PCA)
+
+# first, we demonstrate PCA on the USArrests dataset
+
+# save the state names for later figures
+states <- row.names(USArrests)
+states
+
+# calculate the means and variances of each column (variable) in the dataset
+apply(USArrests, 2, mean) # this applies the mean function to each column
+apply(USArrests, 2, var)  # this applies the var functions to each column
+# these show that the variables are not quite comparable - we should scale them before PCA!
+
+# we can find the PCs with the prcomp function; scale=TRUE will mean the variables will all have
+# a variance of 1
+pr.out <- prcomp(USArrests, scale=TRUE)
+names(pr.out)   # parts of the result object
+pr.out$center   # means used for the scaling
+pr.out$scale    # standard deviations used for the scaling (should be sqrt(vars) from above)
+pr.out$rotation # PC loading vectors - there are 4 PCs
+dim(pr.out$x)   # PC scores
+
+# plotting the results using a biplot
+biplot(pr.out, scale=0)
+
+# if we want the axes to face a different direction, this can be achieved by:
+pr.out$rotation <- -pr.out$rotation
+pr.out$x <- -pr.out$x
+biplot(pr.out, scale=0)
+
+# we can also check the standard deviations of the PCs
+pr.out$sdev
+# the variance explained by each PC is the squared standard deviation
+pr.var <- pr.out$sdev^2
+pr.var
+# and the proportion of variance explained is easily calculated like this
+pve <- pr.var / sum(pr.var)
+pve
+# first PC explains 62% of variance, second 25%, the other two <10% each
+
+# plotting PVE and cumulative PVE by component
+plot(pve, 
+     xlab="Principal Component", 
+     ylab="Proportion of Variance Explained", 
+     ylim=c(0,1),
+     type='b')
+plot(cumsum(pve),
+     xlab="Principal Component", 
+     ylab="Cumulative Proportion of Variance Explained", 
+     ylim=c(0,1),
+     type='b')
+# note: cumsum() calculates the cumulative sum of elements in a vector
+
+
+## 3. K-Means Clustering
+
+# we perform k-means clustering on a simulated dataset
+
+# simulate 50 observations for 2 variables
+x <- matrix(rnorm(50*2), ncol=2) # drawing values from a standard normal distribution
+x[1:25,1] <- x[1:25,1]+3         # the first 25 obs. are higher on the first variable
+x[1:25,2] <- x[1:25,2]-4         # the first 25 obs. are lower on the second variable
+
+# apply k-means clustering with 2 clusters and 20 different starting values
+km.out <- kmeans(x, 2, nstart=20)
+km.out$cluster # cluster memberships (not surprisingly a 25-25 split)
+# scatterplot of the data with with observations coloured by cluster membership
+plot(x, col=(km.out$cluster+1), main="K-Means Clustering Results with K=2", xlab="", ylab="", pch=20, cex=2)
+
+# now, something less trivial: we apply k-means looking for 3 clusters
+km.out <- kmeans(x, 3, nstart=20)
+km.out # different parts of the result object
+# scatterplot with cluster memberships
+plot(x, col=(km.out$cluster+1), main="K-Means Clustering Results with K=3", xlab="", ylab="", pch=20, cex=2)
+
+# we can easily see how much multiple starting values matter
+km.out <- kmeans(x,3,nstart=1)  # start from one random partition
+km.out$tot.withinss             # amount of variation within clusters
+km.out <- kmeans(x,3,nstart=20) # start from 20 random partitions and choose the best
+km.out$tot.withinss             # amoung of variation within clusters (should be lower then above)
+
+
+## 4. Hierarchical Clustering
+
+# lastly, we are going to carry out hiearchical clustering on the same simulated data
+# this can be done with the hclust() function
+# the function takes a distance matrix of observations as its input
+# we will easily transform the x data object into a (Euclidean) distance matrix by the dist()
+# function
+
+# clustering
+hc.complete <- hclust(dist(x), method="complete") # with complete linkage
+hc.average <- hclust(dist(x), method="average")   # with average linkage
+hc.single <- hclust(dist(x), method="single")     # with single linkage
+
+# plot the resulting trees
+par(mfrow=c(1,3))
+plot(hc.complete,main="Complete Linkage", xlab="", sub="", cex=.9)
+plot(hc.average, main="Average Linkage", xlab="", sub="", cex=.9)
+plot(hc.single, main="Single Linkage", xlab="", sub="", cex=.9)
+par(mfrow=c(1,1))
+
+# define clusters by cutting the tree into a number of parts
+cutree(hc.complete, 2) # 2 clusters
+cutree(hc.average, 2)  # 2 clusters
+cutree(hc.single, 2)   # 2 clusters
+cutree(hc.single, 4)   # 4 clutsers
+
+# scaling the variables before cluster analysis
+xsc <- scale(x)
+plot(hclust(dist(xsc), method="complete"), main="Hierarchical Clustering with Scaled Features")
+
+# setup another dataset and define correlation-based distance
+x <- matrix(rnorm(30*3), ncol=3)
+dd <- as.dist(1-cor(t(x)))
+plot(hclust(dd, method="complete"), main="Complete Linkage with Correlation-Based Distance", xlab="", sub="")
+
+
+### END OF SCRIPT.
