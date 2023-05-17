@@ -12,6 +12,7 @@ library(gridExtra)      # for boxplot arrangement
 library(reshape2)       # for correlation plot
 library(tree)
 library(randomForest)
+library(boot)
 library(gbm)
 
 # load in data
@@ -479,22 +480,29 @@ plot(tree_model2)
 text(tree_model2, pretty = 0)
 
 
-# random Forest
+# random forest
 rf_model <- randomForest(Overall_SatisfactionScore ~ ., 
                          data = train, 
                          ntree = 300)
-
 rf_model2 <- randomForest(Overall_SatisfactionScore ~ ., 
                          data = employee_factor, 
                          ntree = 300)
-# random forest plot
-importance(rf_model)
-order(rf_model$importance)
+# random forest summary & plot
+rf_importance <- importance(rf_model)
+view(rf_importance)
 plot(rf_model)
-
-importance(rf_model2)
-order(rf_model2$importance)
+rf_importance2 <- importance(rf_model2)
+view(rf_importance2)
 plot(rf_model2)
+
+# now using bootstrapping and applying to tree and forest
+bootstrap_fn <- function(employee_factor, index) {
+  model <- randomForest(Overall_SatisfactionScore ~ ., 
+                        data = employee_factor[index, ], 
+                        ntree = 300)
+  return(mean(abs(predict(model, newdata = data[-index, ]) - data$satisfaction[-index])))
+}
+
 
 
 # gradient Boosting
@@ -502,7 +510,6 @@ gbm_model <- gbm(Overall_SatisfactionScore ~ .,
                  data = train, 
                  n.trees = 500, 
                  interaction.depth = 3)
-
 gbm_model2 <- gbm(Overall_SatisfactionScore ~ ., 
                  data = employee_factor, 
                  n.trees = 500, 
@@ -512,11 +519,11 @@ gbm_model2 <- gbm(Overall_SatisfactionScore ~ .,
 summary(gbm_model)
 plot(gbm_model, i.var = "Overall_SatisfactionScore")
 plot(gbm_model)
-
 summary(gbm_model2)
 plot(gbm_model2, i.var = "overall_satisfaction")
 plot(gbm_model2)
-
 summary(gbm_model3)
 plot(gbm_model3, i.var = "overall_satisfaction")
 plot(gbm_model3)
+
+
