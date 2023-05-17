@@ -26,7 +26,7 @@ glimpse(employee)
 
 # Data Cleaning -----------------------------------------------------------
 
-# UNDERSTANDING VARIABLE OF INTEREST
+## UNDERSTANDING VARIABLE OF INTEREST
 # see how many of each satisfaction score
 employee %>%
   group_by(Overall_SatisfactionScore) %>%
@@ -36,12 +36,6 @@ employee %>%
 employee <- employee %>%
   filter(Overall_SatisfactionScore == 'Detractor' | 
            Overall_SatisfactionScore == 'Promoter')
-
-# initial removing of variables
-## due to nature of study, i am removing external factors which could affect 
-## overall satisfaction
-employee <- employee %>%
-  select(-EmployeeID, -Education, -EducationType, -MaritalStatus)
 
 # change data to factors
 employee_factor <- employee %>%
@@ -56,32 +50,46 @@ employee$Overall_SatisfactionScore <-
 # changing gender to dummy
 employee$Gender <- ifelse(employee$Gender == "Male", 1, 0)
 
-# one hot encode department & travel type data
+# one hot encode department, travel type, education data
 employee <- cbind(employee[, -which(names(employee) == 'Department')], 
                  model.matrix(~Department-1, employee))
 
 employee <- cbind(employee[, -which(names(employee) == 'Traveltype_last_year')], 
                  model.matrix(~Traveltype_last_year-1, employee))
 
-# creating new ordered numerical variables for reviews & satisfaction scores
+employee <- cbind(employee[, -which(names(employee) == 'EducationType')], 
+                  model.matrix(~EducationType-1, employee))
+
+# creating new ordered numerical variables for marital, education
+# reviews & satisfaction scores
 employee <- employee %>%
-  mutate(potential_review = case_when(
+  mutate(Education = case_when(
+    Education == "Under Graduation" ~ 1,
+    Education == "Graduation" ~ 2,
+    Education == "Masters / PHD" ~ 3,
+  ),
+  MaritalStatus = case_when(
+    MaritalStatus == "Single" ~ 1,
+    MaritalStatus == "Married" ~ 2,
+    MaritalStatus == "Divorced" ~ 3,
+  ),
+  Potential_Review = case_when(
       PotentialReview == "Low" ~ 1,
       PotentialReview == "Medium" ~ 2,
       PotentialReview == "High" ~ 3,
       PotentialReview == "Very High" ~ 4
   ),
-    performance_review = case_when(
+    Performance_Review = case_when(
       PerformanceReview == "Inconsistent" ~ 1,
       PerformanceReview == "Met Expectations" ~ 2,
       PerformanceReview == "Exceed Expectations" ~ 3
   ),
-    satisfaction_score = case_when(
+    Satisfaction_Score = case_when(
       SatisfactionScore == "Detractor" ~ 1,
       SatisfactionScore == "Passive" ~ 2,
       SatisfactionScore == "Promoter" ~ 3
   ),
-    job_role_satisfaction_score = case_when(
+    Job_Role_Satisfaction_Score = case_when(
       JobRole_SatisfactionScore == "Detractor" ~ 1,
       JobRole_SatisfactionScore == "Passive" ~ 2,
       JobRole_SatisfactionScore == "Promoter" ~ 3
@@ -89,7 +97,7 @@ employee <- employee %>%
 
 # removing unnecessary variables
 employee <- employee %>%
-  select(-PotentialReview, -PerformanceReview, -SatisfactionScore, 
+  select(-EmployeeID, -PotentialReview, -PerformanceReview, -SatisfactionScore, 
          -JobRole_SatisfactionScore)
 summary(employee)
 glimpse(employee)
@@ -102,31 +110,7 @@ employee <- employee %>%
   relocate(Overall_SatisfactionScore)
 
 
-# Summary Statistics ------------------------------------------------------
-
-# correlation matrix using only numeric data prepared
-# corr_mat <- cor(employee[, 1:14])
-corr_mat <- cor(employee)
-# convert matrix to long format
-corr_matrix_melt <- melt(corr_mat)
-# plot correlation matrix
-ggplot(corr_matrix_melt, aes(x=Var1, y=Var2, fill=value)) +
-  geom_tile() +
-  scale_fill_gradient2(low="turquoise4", mid="white", high="palevioletred4", midpoint=0) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-corr_tibble <- as_tibble(corr_mat)
-corr_tibble$DepartmentSupport
-
-## REMOVE YEARS_IN_CURRENT_ROLE (-YEARS AT COMPANY KEEP)
-## REMOVE TOTAL EXPERIENCE (-MONTHLY INCOME KEEP??)
-## maybe even remove performance review (last salary hike keep)
-## seems like travel types are highly correlated w each other and little to 
-## no correlation with overall satisfaction
-
-
-# SUMMARY GRAPHS --------
+# Summary Plots -----------------------------------------------
 
 # PLOT 1 - GENDER DISTRIBUTION BY SATISFACTION SCORE
 table(employee_factor$Gender)
@@ -153,128 +137,90 @@ plot(g1)
 ## slightly larger proportion of males voting promoter - bigger difference in voting
 
 # PLOT 2 - EDUCATION FIELD & TYPE BY SATISFACTION SCORE
-# g2a <- employee_factor %>%
-#   group_by(Education, EducationType, Overall_SatisfactionScore) %>%
-#   summarise(n=n()) %>%
-#   ungroup() %>%
-#   group_by(Education) %>%
-#   mutate(prop = round(n/sum(n), 2)) %>%
-#   ggplot(aes(Education, prop)) +
-#   geom_col(alpha=.5,fill='thistle3') +
-#   facet_grid(EducationType~Overall_SatisfactionScore) +
-#   geom_text(aes(label=prop),size=4.5,color='paleredviolet4') +
-#   labs(title='Education Field & Type by Satisfaction Score',
-#        x='Education',
-#        y = "Proportion of employees by education attained")
-# plot(g2a)
-# 
-# g2b <- employee_factor %>%
-#   group_by(Education, Overall_SatisfactionScore) %>%
-#   summarise(n=n()) %>%
-#   ungroup() %>%
-#   group_by(Education) %>%
-#   mutate(prop = round(n/sum(n), 2)) %>%
-#   ggplot(aes(Education, prop)) +
-#   geom_col(alpha=.5,fill='thistle3') +
-#   facet_grid(~Overall_SatisfactionScore) +
-#   geom_text(aes(label=prop),size=4.5,color='paleredviolet4') +
-#   theme(axis.title.y = element_blank()) +
-#   labs(title='Educational Level by Satisfaction Score',
-#        x='Education')
-# plot(g2b)
-# 
-# g2c <- employee_factor %>%
-#   group_by(EducationType, Overall_SatisfactionScore) %>%
-#   summarise(n=n()) %>%
-#   ungroup() %>%
-#   group_by(EducationType) %>%
-#   mutate(prop = round(n/sum(n), 2)) %>%
-#   ggplot(aes(EducationType, prop)) +
-#   geom_col(alpha=.5,fill='thistle3') +
-#   facet_grid(~Overall_SatisfactionScore) +
-#   geom_text(aes(label=prop),size=4.5,color='paleredviolet4') +
-#   theme(axis.title.y = element_blank()) +
-#   labs(title='Education Type by Satisfaction Score',
-#        x='Education')
-# plot(g2c)
-# most proportions for each level of satisfaction are similar / same
-# REMOVE EDUCAION TYPE
+g2a <- employee_factor %>%
+ group_by(Education, EducationType, Overall_SatisfactionScore) %>%
+ summarise(n=n()) %>%
+ ungroup() %>%
+ group_by(Education) %>%
+ mutate(prop = round(n/sum(n), 2)) %>%
+ ggplot(aes(Education, prop)) +
+ geom_col(alpha=.5,fill='thistle3') +
+ facet_grid(EducationType~Overall_SatisfactionScore) +
+ geom_text(aes(label=prop),size=4.5,color='palevioletred4') +
+ labs(title='Education Field & Type by Satisfaction Score',
+      x='Education',
+      y = "Proportion of employees by education attained")
+plot(g2a)
 
-# PLOT 3A - MARITAL STATUS BY SATISFACTION SCORE
-# g3a <- employee_factor %>%
-#   group_by(MaritalStatus, Overall_SatisfactionScore) %>%
-#   summarise(n=n(),'pct'=round(n/nrow(employee_factor),3)) %>%
-#   ungroup() %>%
-#   group_by(MaritalStatus) %>%
-#   mutate(prop = round(n/sum(n), 2)) %>%
-#   ggplot(aes(MaritalStatus, prop)) +
-#   geom_col(alpha=.5,fill='thistle3') +
-#   facet_grid(~Overall_SatisfactionScore) +
-#   geom_text(aes(y=prop*1.1, label=prop),size=8,color='paleredviolet4') +
-#   theme(text=element_text(size=18),axis.text.y=element_blank(),axis.title.y=element_blank()) +
-#   geom_line(aes(y=prop),group=1) +
-#   labs(title='Marital Status Overview by Satisfaction Score',
-#        x='MaritalStatus')
-# plot(g3a)
+g2b <- employee_factor %>%
+ group_by(Education, Overall_SatisfactionScore) %>%
+ summarise(n=n()) %>%
+ ungroup() %>%
+ group_by(Education) %>%
+ mutate(prop = round(n/sum(n), 2)) %>%
+ ggplot(aes(Education, prop)) +
+ geom_col(alpha=.5,fill='thistle3') +
+ facet_grid(~Overall_SatisfactionScore) +
+ geom_text(aes(label=prop),size=4.5,color='palevioletred4') +
+ theme(axis.title.y = element_blank()) +
+ labs(title='Educational Level by Satisfaction Score',
+      x='Education')
+plot(g2b)
 
-# g3b <- employee_factor %>%
-#   group_by(Overall_SatisfactionScore, MaritalStatus) %>%
-#   summarise(n=n(),'pct'=round(n/nrow(employee_factor),3)) %>%
-#   ungroup() %>%
-#   group_by(Overall_SatisfactionScore) %>%
-#   mutate(prop = round(n/sum(n), 2)) %>%
-#   ggplot(aes(Overall_SatisfactionScore, prop)) +
-#   geom_col(alpha=.5,fill='thistle3') +
-#   facet_grid(~MaritalStatus) +
-#   geom_text(aes(y=prop*1.1, label=prop),size=8,color='paleredviolet4') +
-#   theme(text=element_text(size=18),axis.text.y=element_blank(),axis.title.y=element_blank()) +
-#   geom_line(aes(y=prop),group=1) +
-#   labs(title='Marital Status Overview by Satisfaction Score',
-#        x='Overall Satisfaction Score')
-# plot(g3b)
-# 
-# grid.arrange(g3a,g3b,nrow=2,ncol=1)
+g2c <- employee_factor %>%
+ group_by(EducationType, Overall_SatisfactionScore) %>%
+ summarise(n=n()) %>%
+ ungroup() %>%
+ group_by(EducationType) %>%
+ mutate(prop = round(n/sum(n), 2)) %>%
+ ggplot(aes(EducationType, prop)) +
+ geom_col(alpha=.5,fill='thistle3') +
+ facet_grid(~Overall_SatisfactionScore) +
+ geom_text(aes(label=prop),size=4.5,color='palevioletred4') +
+ theme(axis.title.y = element_blank()) +
+ labs(title='Education Type by Satisfaction Score',
+      x='Education')
+plot(g2c)
+#most proportions for each level of satisfaction are similar / same
+#REMOVE EDUCAION TYPE
 
-# PLOT 4 - BOXPLOT OF AGES BY SATISFACTION SCORE
-g4 <-ggplot(employee_factor, aes(Overall_SatisfactionScore, Age)) +
-  geom_boxplot(fill='thistle3', alpha=.5) +
-  labs(title='Boxplot of Age by Overall Satisfaction Score',
-       x='Overall Satisfaction Score', y='Age')
+#PLOT 3A - MARITAL STATUS BY SATISFACTION SCORE
+g3a <- employee_factor %>%
+ group_by(MaritalStatus, Overall_SatisfactionScore) %>%
+ summarise(n=n(),'pct'=round(n/nrow(employee_factor),3)) %>%
+ ungroup() %>%
+ group_by(MaritalStatus) %>%
+ mutate(prop = round(n/sum(n), 2)) %>%
+ ggplot(aes(MaritalStatus, prop)) +
+ geom_col(alpha=.5,fill='thistle3') +
+ facet_grid(~Overall_SatisfactionScore) +
+ geom_text(aes(y=prop*1.1, label=prop),size=8,color='palevioletred4') +
+ theme(text=element_text(size=18),axis.text.y=element_blank(),axis.title.y=element_blank()) +
+ geom_line(aes(y=prop),group=1) +
+ labs(title='Marital Status Overview by Satisfaction Score',
+      x='MaritalStatus')
+plot(g3a)
 
-plot(g4)
-# older people are more likely to have a higher satisfaction score
+g3b <- employee_factor %>%
+ group_by(Overall_SatisfactionScore, MaritalStatus) %>%
+ summarise(n=n(),'pct'=round(n/nrow(employee_factor),3)) %>%
+ ungroup() %>%
+ group_by(Overall_SatisfactionScore) %>%
+ mutate(prop = round(n/sum(n), 2)) %>%
+ ggplot(aes(Overall_SatisfactionScore, prop)) +
+ geom_col(alpha=.5,fill='thistle3') +
+ facet_grid(~MaritalStatus) +
+ geom_text(aes(y=prop*1.11, label=prop),size=8,color='palevioletred4') +
+ theme(text=element_text(size=18),axis.text.y=element_blank(),axis.title.y=element_blank()) +
+ geom_line(aes(y=prop),group=1) +
+ labs(title='Marital Status Overview by Satisfaction Score',
+      x='Overall Satisfaction Score')
+plot(g3b)
 
-# PLOT 5 - BOXPLOT OF YEARS AT COMPANY BY OVERALL SATISFACTION SCORE
-g5 <- ggplot(employee_factor, aes(Overall_SatisfactionScore, Years_at_Company)) +
-  geom_boxplot(fill='thistle3', alpha=.5) +
-  labs(title='Boxplot of Years at Company by Overall Satisfaction Score',
-       x='Overall Satisfaction Score', y='Years at Company')
-plot(g5)
-# not saying much
+grid.arrange(g3a,g3b,nrow=2,ncol=1)
 
-# PLOT 6 - BOXPLOT OF SATISFACTION BY DISTANCE FROM OFFICE
-g6 <- ggplot(employee_factor, aes(Overall_SatisfactionScore, DistanceToOffice)) +
-  geom_boxplot(fill='thistle3', alpha=.5) +
-  labs(title='Boxplot of Distance to Office by Overall Satisfaction Score',
-       x='Overall Satisfaction Score', y='Distance to office')
-plot(g6)
-
-# PLOT 7 - BOXPLOT OF SATISFACTION BY MONTHLY INCOME
-g7 <- ggplot(employee_factor, aes(Overall_SatisfactionScore, MonthlyIncome)) +
-  geom_boxplot(fill='thistle3', alpha=.5) +
-  labs(title='Boxplot of Monthly Income by Overall Satisfaction Score',
-       x='Overall Satisfaction Score', y='Monthly Income')
-plot(g7)
-
-# PLOT 8 - BOXPLOT OF SATISFACTION BY LAST SALARY HIKE
-g8 <- ggplot(employee_factor, aes(Overall_SatisfactionScore, LastSalaryHike)) +
-  geom_boxplot(fill='thistle3', alpha=.5) +
-  labs(title='Boxplot of Last Salary Hike by Overall Satisfaction Score',
-       x='Overall Satisfaction Score', y='Last Salary Hike')
-plot(g8)
-
-# PLOT 9 - DEPARTMENT BY SATISFACTION SCORE
-g9 <- employee_factor %>%
+# PLOT 4 - DEPARTMENT BY SATISFACTION SCORE
+g4 <- employee_factor %>%
   group_by(Department, Overall_SatisfactionScore) %>%
   summarise(n=n()) %>%
   ungroup() %>%
@@ -283,24 +229,91 @@ g9 <- employee_factor %>%
   ggplot(aes(Department, prop)) +
   geom_col(alpha=.5,fill='thistle3') +
   facet_grid(~Overall_SatisfactionScore) +
-  geom_text(aes(label=prop), size = 5) +
+  geom_text(aes(label=prop), size = 8, color = "palevioletred4") +
   theme(axis.title.y = element_blank()) +
   labs(title='Department by Satisfaction Score',
        x='Department')
+plot(g4)
+
+# PLOT 4 - BOXPLOT OF AGES BY SATISFACTION SCORE
+g5 <-ggplot(employee_factor, aes(Overall_SatisfactionScore, Age)) +
+  geom_boxplot(fill='thistle3', alpha=.5) +
+  labs(title='Boxplot of Age by Overall Satisfaction Score',
+       x='Overall Satisfaction Score', y='Age')
+
+plot(g5)
+# older people are more likely to have a higher satisfaction score
+
+# PLOT 5 - BOXPLOT OF YEARS AT COMPANY BY OVERALL SATISFACTION SCORE
+g6 <- ggplot(employee_factor, aes(Overall_SatisfactionScore, Years_at_Company)) +
+  geom_boxplot(fill='thistle3', alpha=.5) +
+  labs(title='Boxplot of Years at Company by Overall Satisfaction Score',
+       x='Overall Satisfaction Score', y='Years at Company')
+plot(g6)
+# not saying much
+
+# PLOT 6 - BOXPLOT OF SATISFACTION BY DISTANCE FROM OFFICE
+g7 <- ggplot(employee_factor, aes(Overall_SatisfactionScore, DistanceToOffice)) +
+  geom_boxplot(fill='thistle3', alpha=.5) +
+  labs(title='Boxplot of Distance to Office by Overall Satisfaction Score',
+       x='Overall Satisfaction Score', y='Distance to office')
+plot(g7)
+
+# PLOT 7 - BOXPLOT OF SATISFACTION BY MONTHLY INCOME
+g8 <- ggplot(employee_factor, aes(Overall_SatisfactionScore, MonthlyIncome)) +
+  geom_boxplot(fill='thistle3', alpha=.5) +
+  labs(title='Boxplot of Monthly Income by Overall Satisfaction Score',
+       x='Overall Satisfaction Score', y='Monthly Income')
+plot(g8)
+
+# PLOT 8 - BOXPLOT OF SATISFACTION BY LAST SALARY HIKE
+g9 <- ggplot(employee_factor, aes(Overall_SatisfactionScore, LastSalaryHike)) +
+  geom_boxplot(fill='thistle3', alpha=.5) +
+  labs(title='Boxplot of Last Salary Hike by Overall Satisfaction Score',
+       x='Overall Satisfaction Score', y='Last Salary Hike')
 plot(g9)
 
 # set up the plotting area for boxplot comparisons and plot
-grid.arrange(g4,g5,g6,g8,nrow=2,ncol=2)
+grid.arrange(g5,g6,g8,g9, nrow=2,ncol=2)
 ?`gridExtra-package`
 
-# Exploration -------------------------------------------------------------
+# minor cleaning -- removing variables due to plots & nature of study
+employee <- employee %>%
+  select(-`EducationTypeBio-technology`, -EducationTypeEconomics, 
+         -`EducationTypeMarketing / Finance`, -`EducationTypePhycology / Behavior Sciences`, 
+         -MaritalStatus)
 
-## USE PCA to see non-categorical variables?
+employee_factor <- employee_factor %>%
+  select(-EmployeeID, -Education, -EducationType, -MaritalStatus)
+
+# clear up environment
+rm(g1, g2a, g2b, g2c, g3a, g3b,  g4, g5, g6, g7, g8, g9)
+
+
+# Correlation Matrix ------------------------------------------------------
+
+# correlation matrix using newly cleaned numeric data
+corr_mat <- cor(employee)
+# convert matrix to long format
+corr_matrix_melt <- melt(corr_mat)
+?geom_tile
+# plot correlation matrix
+ggplot(corr_matrix_melt, aes(x=Var1, y=Var2, fill=value)) +
+  geom_tile() +
+  scale_fill_gradient2(low="turquoise4", mid="white", high="palevioletred4", midpoint=0) +
+  theme_minimal() +
+  labs(title = "Correlation Plot of Employee data", x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+corr_tibble <- as_tibble(corr_mat)
+view(corr_mat)
+
+
+# Exploration - PCA -------------------------------------------------------------
+
 # resetting grid space
 dev.off()
 par(mfrow = c(1, 1))
-#y = as.matrix(employee[,1])
-#x = as.matrix(employee[,2:23])
 
 # important to scale variables so all have variance = 1 (TRUE)
 pca.out <- prcomp(employee, center = TRUE, scale. = TRUE)
@@ -309,9 +322,11 @@ names(pca.out)
 pca.out$rotation
 # get PC loadings for first 5 PCs
 pca.out$rotation[,1:5]
-# create vector which orders loadings of first principal component
+# create vector which orders loadings of first and second principal component
 ordered_pc1 <- pca.out$rotation[,1][order(pca.out$rotation[,1])]
 view(rev(ordered_pc1))
+ordered_pc2 <- pca.out$rotation[,2][order(pca.out$rotation[,2])]
+view(rev(ordered_pc2))
 dim(pca.out$x)
 
 # plot loading vectors of first 2 PCs
@@ -321,19 +336,17 @@ biplot(pca.out, scale = 0)
 pca.out$rotation <- -pca.out$rotation
 pca.out$x <- -pca.out$x
 biplot(pca.out, scale=0)
-
 ## still difficult to see clearly....
 
-## plot scree plot -- 
+# plot scree plot -- 
 # checking the standard deviations of the PCs
 pca.out$sdev
 # the variance explained by each PC is the squared standard deviation
 pca.var <- pca.out$sdev^2
 pca.var
-# and the proportion of variance explained is easily calculated like this
+# proportion of variance explained
 pve <- pca.var / sum(pca.var)
 pve
-# first PC explains 62% of variance, second 25%, the other two <10% each
 
 # plotting PVE and cumulative PVE by component
 par(mfrow = c(1, 2))
@@ -352,56 +365,61 @@ plot(cumsum(pve),
 # cumulative graph is showing we need more PCs to explain the data 
 
 
-# HIERARCHICAL CLUSTERING ----------------
+# Exploration - Hierarchical Clustering  ----------------
 dev.off()
 # scale the numeric dataframe
 employee_scaled <- scale(employee)
 
-# hierarchical clustering on observations using complete linkage
-hc.complete <- hclust(dist(employee_scaled), method="complete")
-# hierarchical clustering on observations using average linkage
-hc.average <- hclust(dist(employee_scaled), method="average")
-# hierarchical clustering on observations using single linkage
-hc.single <- hclust(dist(employee_scaled), method="single")
+# clustering observations -- ignore
 
-# create view of the 3 plots 
-par(mfrow=c(1,3))
-plot(hc.complete, main="Complete Linkage", xlab="", sub="", cex =.9)
-plot(hc.average, main="Average Linkage", xlab="", sub="", cex =.9)
-plot(hc.single, main="Single Linkage", xlab="", sub="", cex =.9)
-
-# cut complete dendogram into 4 clusters and assign the observations
-cutree(hc.complete, 4)
-#abline(h = 0.95, col = 'violet')
-# cut average dendogram into 8
-y <- cutree(hc.complete, 8)
-plot(y)
+# # hierarchical clustering on observations using complete linkage
+# hc.complete <- hclust(dist(employee_scaled), method="complete")
+# # hierarchical clustering on observations using average linkage
+# hc.average <- hclust(dist(employee_scaled), method="average")
+# # hierarchical clustering on observations using single linkage
+# hc.single <- hclust(dist(employee_scaled), method="single")
+# 
+# # create view of the 3 plots 
+# par(mfrow=c(1,3))
+# plot(hc.complete, main="Complete Linkage", xlab="", sub="", cex =.9)
+# plot(hc.average, main="Average Linkage", xlab="", sub="", cex =.9)
+# plot(hc.single, main="Single Linkage", xlab="", sub="", cex =.9)
+# 
+# # cut complete dendogram into 4 clusters and assign the observations
+# cutree(hc.complete, 4)
+# #abline(h = 0.95, col = 'violet')
+# # cut average dendogram into 8
+# y <- cutree(hc.complete, 8)
+# plot(y)
 
 # hierarchical clustering using a correlation-based dissimilarity matrix 
 # instead of the default Euclidean distance measure as above
 ?dist
 
 # create dissimilarity matrix using correlation matrix from before
-dissimilarity_matrix <- as.matrix(1-abs(corr_mat))
+diss_mat <- as.matrix(1-abs(corr_mat))
 par(mfrow = c(1,3))
 
-hc.complete.corr <- hclust(as.dist(dissimilarity_matrix), method = "complete")
+hc.complete.corr <- hclust(as.dist(diss_mat), method = "complete")
 plot(hc.complete.corr, main = "Hierarchical Clustering with correlation - Scaled Complete")
 
-hc.average.corr <- hclust(as.dist(dissimilarity_matrix), method = "average")
+hc.average.corr <- hclust(as.dist(diss_mat), method = "average")
 plot(hc.average.corr, main = "Hierarchical Clustering with correlation - Scaled Average")
 
-hc.single.corr <- hclust(as.dist(dissimilarity_matrix), method = "single")
+hc.single.corr <- hclust(as.dist(diss_mat), method = "single")
 plot(hc.single.corr, main = "Hierarchical Clustering with correlation - Scaled Single")
   
-# outputs of clusters of similar variables
-cutree(hc.complete.corr, k = 5)
-cutree(hc.average.corr, k = 5)
-cutree(hc.single.corr, k = 5)
+# outputs of clusters of similar variables (6 clusters)
+cluster_complete <- cutree(hc.complete.corr, k = 6)
+view(cluster_complete)
+cluster_average <- cutree(hc.average.corr, k = 6)
+view(cluster_average)
+cluster_single <- cutree(hc.single.corr, k = 6)
+view(cluster_single)
 
-# plot threshold to identify clusters
+# plot threshold to identify clusters FROM XXX LINKAGE (6)
 par(mfrow = c(1,1))
-plot(hc.complete.corr, labels = colnames(dissimilarity_matrix))
+plot(hc.complete.corr, labels = colnames(diss_mat))
 abline(h = 0.982, col = 'violet')
 
 
@@ -427,17 +445,22 @@ plot(hc11, main = "Hierarchical Clustering with correlation - Scaled Average")
 # 
 # par(mfrow = c(1,1))
 # plot(hc9, labels = colnames(dissimilarity_matrix))
-# abline(h = 0.95, col = 'paleredviolet4')
+# abline(h = 0.95, col = 'palevioletred4')
 
 # Inference ---------------------------------------------------------------
 
-# removing variables from exploration part...
+# removing variables from exploration part
+# employee <- employee %>%
+#   select(-)
+# 
+# employee_factor <- employee_factor %>%
+#   select(-)
 
-# now, we fit a decision tree explaining the overall employee satisfaction score 
+# fit a decision tree explaining the overall employee satisfaction score 
 # variables with all other variables in the employee dataset
 
 # set seed for reproducibility
-set.seed(10493638)
+set.seed(5432)
 # 70% of data randomly sampled into training
 train_index <- sample(nrow(employee_factor), 0.7 * nrow(employee_factor))
 # creating train & test subset 
