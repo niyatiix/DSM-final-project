@@ -1,26 +1,26 @@
 {
-    "id": "11809C9C",
-    "path": "~/Documents/uni/year3/data_science_modelling/T8/08_examples.R",
-    "project_path": null,
+    "id": "B957FA98",
+    "path": "~/Documents/GitHub/DSM-final-project/final_script.R",
+    "project_path": "final_script.R",
     "type": "r_source",
     "hash": "0",
     "contents": "",
     "dirty": false,
-    "created": 1684185951195.0,
+    "created": 1684173511167.0,
     "source_on_save": false,
-    "relative_order": 5,
+    "relative_order": 1,
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "156,7",
-        "scrollLine": "131"
+        "cursorPosition": "118,0",
+        "scrollLine": "108"
     },
     "folds": "",
-    "lastKnownWriteTime": 1681993185,
+    "lastKnownWriteTime": 1684188297,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1681993185,
+    "last_content_update": 1684227889585,
     "read_only": false,
     "read_only_alternatives": []
 }

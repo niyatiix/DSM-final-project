@@ -3,7 +3,7 @@
     "path": "~/Documents/GitHub/DSM-final-project/finalpractice.R",
     "project_path": "finalpractice.R",
     "type": "r_source",
-    "hash": "2161624512",
+    "hash": "0",
     "contents": "",
     "dirty": false,
     "created": 1684183286458.0,
@@ -12,8 +12,8 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "159,65",
-        "scrollLine": "137"
+        "cursorPosition": "6,18",
+        "scrollLine": "0"
     },
     "folds": "",
     "lastKnownWriteTime": 1684187071,
