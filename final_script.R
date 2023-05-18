@@ -13,7 +13,10 @@ library(reshape2)       # for correlation plot
 library(tree)
 library(randomForest)
 library(boot)
+library(ipred)
+library(caret)
 library(gbm)
+library(MASS)
 
 # load in data
 employee <- read.csv("employee_dataset.csv", sep = ";")
@@ -307,7 +310,6 @@ ggplot(corr_matrix_melt, aes(x=Var1, y=Var2, fill=value)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 corr_tibble <- as_tibble(corr_mat)
-view(corr_mat)
 
 
 # Exploration - PCA -------------------------------------------------------------
@@ -460,7 +462,7 @@ plot(hc11, main = "Hierarchical Clustering with correlation - Scaled Average")
 # fit a decision tree explaining the overall employee satisfaction score 
 # variables with all other variables in the employee dataset
 
-# set seed for reproducibility
+# set seed for reproducibility within resampling
 set.seed(5432)
 # 70% of data randomly sampled into training
 train_index <- sample(nrow(employee_factor), 0.7 * nrow(employee_factor))
@@ -473,29 +475,57 @@ tree_model <- tree(Overall_SatisfactionScore ~ ., data = train)
 tree_model2 <- tree(Overall_SatisfactionScore ~ ., data = employee_factor)
 # decision tree summary & plot
 summary(tree_model)
+tree_model
 plot(tree_model)
 text(tree_model, pretty = 0)
 summary(tree_model2)
 plot(tree_model2)
 text(tree_model2, pretty = 0)
 
+# let's prune the tree with the same approach as earlier
+cv.employee <- cv.tree(tree_model)
+plot(cv.employee$size, cv.employee$dev, type='b')
+# identify the size of the best fitting tree
+best.employee <- cv.employee$size[cv.employee$dev==min(cv.employee$dev)]
+
+# prune tree to optimal size (note: it may be the same as the original tree)
+prune.employee <- prune.tree(tree_model, best=best.employee)
+prune.employee
+# plot the pruned tree
+plot(prune.employee)
+text(prune.employee)
+
+
 
 # random forest
+?randomForest
 rf_model <- randomForest(Overall_SatisfactionScore ~ ., 
                          data = train, 
-                         ntree = 300)
+                         ntree = 300,
+                         importance = TRUE)
+rf_model
 rf_model2 <- randomForest(Overall_SatisfactionScore ~ ., 
                          data = employee_factor, 
-                         ntree = 300)
+                         ntree = 300,
+                         importance = TRUE)
+rf <- randomForest(factor(Overall_SatisfactionScore)~.,
+                   data = employee_factor,
+                   ntree=500,
+                   type='classification')
+rf
+view(importance(rf))
+plot(rf)
 # random forest summary & plot
 rf_importance <- importance(rf_model)
 view(rf_importance)
+rf_model
 plot(rf_model)
 rf_importance2 <- importance(rf_model2)
 view(rf_importance2)
 plot(rf_model2)
 
-# now using bootstrapping and applying to tree and forest
+
+# resampling using bootstrapping and applying to tree and forest
 bootstrap_fn <- function(employee_factor, index) {
   model <- randomForest(Overall_SatisfactionScore ~ ., 
                         data = employee_factor[index, ], 
@@ -503,6 +533,30 @@ bootstrap_fn <- function(employee_factor, index) {
   return(mean(abs(predict(model, newdata = data[-index, ]) - data$satisfaction[-index])))
 }
 
+#trying bagging
+?bagging
+
+bag_employee <- bagging(Overall_SatisfactionScore ~ ., 
+                            data = train, 
+                            nbagg = 200,
+                            coob = TRUE)
+bag_employee
+
+# visualize the importance of the predictor variables 
+# by calculating the total reduction in RSS
+#calculate variable importance
+VI <- data.frame(var=names(train[,-1]), imp=varImp(bag_employee))
+
+#sort variable importance descending
+VI_plot <- VI[order(VI$Overall, decreasing=TRUE),]
+print(VI_plot)
+
+#visualize variable importance with horizontal bar plot
+barplot(VI_plot$Overall,
+        names.arg=rownames(VI_plot),
+        horiz=TRUE,
+        col='steelblue',
+        xlab='Variable Importance')
 
 
 # gradient Boosting
@@ -525,5 +579,89 @@ plot(gbm_model2)
 summary(gbm_model3)
 plot(gbm_model3, i.var = "overall_satisfaction")
 plot(gbm_model3)
+
+
+# trying other classification methods
+## Fit a Logistic Regression
+log.fit <- glm(Overall_SatisfactionScore ~ ., 
+               family = "binomial", 
+               data = train)
+summary(log.fit)
+
+# predict probabilities of overall satisfaction for training data using logit
+train$prob <- predict(log.fit, newdata = train, type = "response")
+# assign predictions to classes
+train$pred <- ifelse(train$prob > 0.5, 1 , 0)
+# check counts
+table(train$pred, train$Overall_SatisfactionScore)
+# compare proportions
+prop.table(table(train$pred, train$Overall_SatisfactionScore))
+
+# % Correct?  (Diagonals)
+tr.correct <- (468 + 233) / 891
+tr.correct
+
+# % Incorrect?  (Off-Diagonals)
+tr.incorrect <- 1 - tr.correct
+tr.incorrect
+
+# How would we apply this to test data?
+test$prob <- predict(log.fit, newdata = test, type = "response")
+test$pred <- ifelse(test$prob > 0.5, 1 , 0)
+table(test$pred)
+
+
+## 4. k-Fold Cross-Validation
+
+# This method selects 1/kth of the observations to the test set, the rest 
+# are used as the training set. The process is repeated k times so that the
+# intersection of the k test sets is the empty set (each observation is in
+# exactly one test set). The test errors are averaged from the k test sets.
+
+# this is actually done almost exactly as the LOOCV in R
+# cv.glm() implements k-fold cross-validation, where the 
+# argument "K" defaults to n - the LOOCV case
+
+# we run the same loop as above (up to ten polynomials this time)
+# but specify K=10 in cv.glm(), defining a 10-fold cross-validation
+cv.error.10 <- rep(0,10)
+for (i in 1:10){
+  glm.fit <- glm(Overall_SatisfactionScore ~ .,data=train)
+  cv.error.10[i] <- cv.glm(train,glm.fit,K=10)$delta[1]
+}
+cv.error.10
+
+t(t(cv.error.10))
+
+# We have reproduced here one of the potential lines in the right panel of Figure 5.4:
+plot(1:10, cv.error.10, 
+     type='l', col='blue',
+     xlim=c(1,10), ylim=c(15,29),
+     xlab='Degree of Polynomial', ylab='Mean Squared Error')
+
+# LDA
+lda.fit <- lda(Overall_SatisfactionScore ~ ., data = train)
+lda.fit
+
+# predicting training results
+train.pred.lda <- predict(lda.fit, data = train)
+table(Predicted = train.pred.lda$class, Actual = train$Overall_SatisfactionScore)
+
+## LDA train correct?
+lda.tr.correct <- (468 + 233) / 891
+lda.tr.correct
+
+## QDA
+qda.fit <- qda(Overall_SatisfactionScore ~ ., data = train)
+qda.fit
+
+## Predicting training results
+train.pred.qda <- predict(qda.fit, data = train)
+table(Predicted = train.pred.qda$class, Actual = train$Overall_SatisfactionScore)
+
+## QDA train correct?
+qda.tr.correct <- (468 + 233) / 891
+qda.tr.correct
+
 
 
