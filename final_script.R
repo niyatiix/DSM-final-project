@@ -374,10 +374,10 @@ plot(cumsum(pve),
 # cumulative graph is showing we need more PCs to explain the data 
 
 
-# Exploration - Hierarchical Clustering  ----------------
+# Exploration - Hierarchical Clustering  -------------------------
 dev.off()
 # scale the numeric dataframe
-employee_scaled <- scale(employee)
+# employee_scaled <- scale(employee)
 
 # clustering observations -- ignore
 
@@ -409,13 +409,13 @@ employee_scaled <- scale(employee)
 diss_mat <- as.matrix(1-abs(corr_mat))
 par(mfrow = c(1,3))
 
-hc.complete.corr <- hclust(as.dist(diss_mat), method = "complete")
+hc.complete.corr <- hclust(as.dist(corr_mat), method = "complete")
 plot(hc.complete.corr, main = "Hierarchical Clustering with correlation - Scaled Complete")
 
-hc.average.corr <- hclust(as.dist(diss_mat), method = "average")
+hc.average.corr <- hclust(as.dist(corr_mat), method = "average")
 plot(hc.average.corr, main = "Hierarchical Clustering with correlation - Scaled Average")
 
-hc.single.corr <- hclust(as.dist(diss_mat), method = "single")
+hc.single.corr <- hclust(as.dist(corr_mat), method = "single")
 plot(hc.single.corr, main = "Hierarchical Clustering with correlation - Scaled Single")
   
 # outputs of clusters of similar variables (6 clusters)
@@ -429,51 +429,37 @@ view(cluster_single)
 # plot threshold to identify clusters FROM XXX LINKAGE (6)
 par(mfrow = c(1,1))
 plot(hc.complete.corr, labels = colnames(diss_mat))
-abline(h = 0.982, col = 'violet')
+abline(h = 0.036, col = 'violet')
 
-# a <- cutree(hc9, k = 5)
-# b <- cutree(hc10, k = 5)
-# c <- cutree(hc11, k = 5)
 
-# tb <- table(c(a,b,c, colnames(dissimilarity_matrix)))
-# view(tb)
-# 
-# par(mfrow = c(1,1))
-# plot(hc9, labels = colnames(dissimilarity_matrix))
-# abline(h = 0.95, col = 'palevioletred4')
-
-# Inference ---------------------------------------------------------------
-
-# removing variables from exploration part
-# employee <- employee %>%
-#   select(-)
-# 
-# employee_factor <- employee_factor %>%
-#   select(-)
+# Inference - Trees, Random Forests & Bagging ------------------------------
 
 # fit a decision tree explaining the overall employee satisfaction score 
 # variables with all other variables in the employee dataset
 
 # set seed for reproducibility within resampling
-set.seed(5432)
+set.seed(543)
+set.seed(54321)
+set.seed(111)
 # 80% of data randomly sampled into training
 train_index <- sample(nrow(employee_factor), 0.8 * nrow(employee_factor))
 # creating train & test subset 
 train <- employee_factor[train_index, ]
 test <- employee_factor[-train_index, ]
 
-# decision tree
+# decision tree on training data
 tree_model <- tree(Overall_SatisfactionScore ~ ., data = train)
-tree_model2 <- tree(Overall_SatisfactionScore ~ ., data = employee_factor)
-# decision tree summary & plot
 summary(tree_model)
 tree_model
 plot(tree_model)
 text(tree_model, pretty = 0)
 
+# decision tree on whole dataset 
+tree_model2 <- tree(Overall_SatisfactionScore ~ ., data = employee_factor)
 summary(tree_model2)
 plot(tree_model2)
 text(tree_model2, pretty = 0)
+## both branches show promoter
 
 # let's prune the tree with the same approach as earlier
 cv.employee <- cv.tree(tree_model)
