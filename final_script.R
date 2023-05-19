@@ -38,6 +38,13 @@ employee <- employee %>%
   filter(Overall_SatisfactionScore == 'Detractor' | 
            Overall_SatisfactionScore == 'Promoter')
 
+#manipulate travel type variable - binarise
+employee$Traveltype_last_year <- 
+  ifelse(employee$Traveltype_last_year == "No", 0, 1)
+employee %>%
+  group_by(Traveltype_last_year) %>%
+  count()
+
 # change data to factors
 employee_factor <- employee %>%
   mutate_if(is.character,as.factor) 
@@ -51,12 +58,9 @@ employee$Overall_SatisfactionScore <-
 # changing gender to dummy
 employee$Gender <- ifelse(employee$Gender == "Male", 1, 0)
 
-# one hot encode department, travel type, education data
+# one hot encode department and education data
 employee <- cbind(employee[, -which(names(employee) == 'Department')], 
                  model.matrix(~Department-1, employee))
-
-employee <- cbind(employee[, -which(names(employee) == 'Traveltype_last_year')], 
-                 model.matrix(~Traveltype_last_year-1, employee))
 
 employee <- cbind(employee[, -which(names(employee) == 'EducationType')], 
                   model.matrix(~EducationType-1, employee))
