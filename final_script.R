@@ -8,17 +8,14 @@ dev.off()
 # load libraries
 library(dplyr)
 library(tidyverse)
-library(gridExtra)      # for boxplot arrangement
-library(reshape2)       # for correlation plot
+library(gridExtra)      ## for boxplot arrangement
+library(reshape2)       ## for correlation plot
 library(tree)
-library(randomForest)
-library(boot)
-library(ipred)
-library(caret)
-library(gbm)
-library(MASS)
+library(randomForest) 
+library(ipred)          ## for bagging
+library(caret)          ## for calculating variable importance
 
-# load in data
+# load data
 employee <- read.csv("employee_dataset.csv", sep = ";")
 
 # simple exploration of data
@@ -46,7 +43,7 @@ employee_factor <- employee %>%
   mutate_if(is.character,as.factor) 
 summary(employee_factor)
 glimpse(employee_factor)
-
+         
 # change our variable of interest into a dummy
 employee$Overall_SatisfactionScore <- 
   ifelse(employee$Overall_SatisfactionScore == "Promoter", 1, 0)
@@ -105,6 +102,7 @@ employee <- employee %>%
          -JobRole_SatisfactionScore)
 summary(employee)
 glimpse(employee)
+## only dbl and int type numerical data
   
 # check this has worked
 sum(is.na(employee))
@@ -128,12 +126,12 @@ g1 <- employee_factor %>%
   mutate(prop = round(n/sum(n), 2)) %>%
   ggplot(aes(Overall_SatisfactionScore,n)) +
   geom_col(alpha=.7,fill='thistle3') +
-  geom_point(aes(y=pct*720),size=3) +
+  geom_point(aes(y=pct*720),size=2) +
   geom_text(aes(y=pct*650,label=prop),size=6, color = "palevioletred4") +
   theme(text=element_text(size=20)) +
   labs(title='Gender Distribution by Satisfaction Score',
        x='Gender',
-       y = 'Number of employees') +
+       y = 'Number of employees') + 
   facet_grid(.~Gender)
 plot(g1)
 
@@ -151,9 +149,9 @@ g2a <- employee_factor %>%
  geom_col(alpha=.5,fill='thistle3') +
  facet_grid(EducationType~Overall_SatisfactionScore) +
  geom_text(aes(label=prop),size=4.5,color='palevioletred4') +
- labs(title='Education Field & Type by Satisfaction Score',
-      x='Education',
-      y = "Proportion of employees by education attained")
+ labs(title ='Education Field & Type by Satisfaction Score',
+      x ='Education',
+      y = "Proportion of total employees")
 plot(g2a)
 
 g2b <- employee_factor %>%
@@ -166,9 +164,9 @@ g2b <- employee_factor %>%
  geom_col(alpha=.5,fill='thistle3') +
  facet_grid(~Overall_SatisfactionScore) +
  geom_text(aes(label=prop),size=4.5,color='palevioletred4') +
- theme(axis.title.y = element_blank()) +
- labs(title='Educational Level by Satisfaction Score',
-      x='Education')
+ labs(title ='Educational Level by Satisfaction Score',
+      x ='Education',
+      y = 'Proportion of employees')
 plot(g2b)
 
 g2c <- employee_factor %>%
@@ -181,12 +179,12 @@ g2c <- employee_factor %>%
  geom_col(alpha=.5,fill='thistle3') +
  facet_grid(~Overall_SatisfactionScore) +
  geom_text(aes(label=prop),size=4.5,color='palevioletred4') +
- theme(axis.title.y = element_blank()) +
- labs(title='Education Type by Satisfaction Score',
-      x='Education')
+ labs(title ='Education Type by Satisfaction Score',
+      x ='Education',
+      y = 'Proportion of employees')
 plot(g2c)
-#most proportions for each level of satisfaction are similar / same
-#REMOVE EDUCAION TYPE
+## most proportions for each level of satisfaction are similar / same
+## doesn't seem to affect voting either promoter or detractor
 
 #PLOT 3A - MARITAL STATUS BY SATISFACTION SCORE
 g3a <- employee_factor %>%
@@ -222,6 +220,7 @@ g3b <- employee_factor %>%
 plot(g3b)
 
 grid.arrange(g3a,g3b,nrow=2,ncol=1)
+## single individuals slightly more satisfied than married
 
 # PLOT 4 - DEPARTMENT BY SATISFACTION SCORE
 g4 <- employee_factor %>%
@@ -233,59 +232,62 @@ g4 <- employee_factor %>%
   ggplot(aes(Department, prop)) +
   geom_col(alpha=.5,fill='thistle3') +
   facet_grid(~Overall_SatisfactionScore) +
-  geom_text(aes(label=prop), size = 8, color = "palevioletred4") +
-  theme(axis.title.y = element_blank()) +
-  labs(title='Department by Satisfaction Score',
-       x='Department')
+  geom_text(aes(label=prop), size = 6, color = "palevioletred4") +
+  labs(title ='Department by Satisfaction Score',
+       x ='Department',
+       y = 'Proportion of employees')
 plot(g4)
+## bigger discrepancy in voting within support and client solutions
 
-# PLOT 4 - BOXPLOT OF AGES BY SATISFACTION SCORE
+# PLOT 5 - BOXPLOT OF AGES BY SATISFACTION SCORE
 g5 <-ggplot(employee_factor, aes(Overall_SatisfactionScore, Age)) +
   geom_boxplot(fill='thistle3', alpha=.5) +
   labs(title='Boxplot of Age by Overall Satisfaction Score',
        x='Overall Satisfaction Score', y='Age')
 
 plot(g5)
-# older people are more likely to have a higher satisfaction score
+## older people are slightly more likely to vote promoter
 
-# PLOT 5 - BOXPLOT OF YEARS AT COMPANY BY OVERALL SATISFACTION SCORE
+# PLOT 6 - BOXPLOT OF YEARS AT COMPANY BY OVERALL SATISFACTION SCORE
 g6 <- ggplot(employee_factor, aes(Overall_SatisfactionScore, Years_at_Company)) +
   geom_boxplot(fill='thistle3', alpha=.5) +
   labs(title='Boxplot of Years at Company by Overall Satisfaction Score',
        x='Overall Satisfaction Score', y='Years at Company')
 plot(g6)
-# not saying much
+## not saying much
 
-# PLOT 6 - BOXPLOT OF SATISFACTION BY DISTANCE FROM OFFICE
+# PLOT 7 - BOXPLOT OF SATISFACTION BY DISTANCE FROM OFFICE
 g7 <- ggplot(employee_factor, aes(Overall_SatisfactionScore, DistanceToOffice)) +
   geom_boxplot(fill='thistle3', alpha=.5) +
   labs(title='Boxplot of Distance to Office by Overall Satisfaction Score',
        x='Overall Satisfaction Score', y='Distance to office')
 plot(g7)
 
-# PLOT 7 - BOXPLOT OF SATISFACTION BY MONTHLY INCOME
+# PLOT 8 - BOXPLOT OF SATISFACTION BY MONTHLY INCOME
 g8 <- ggplot(employee_factor, aes(Overall_SatisfactionScore, MonthlyIncome)) +
   geom_boxplot(fill='thistle3', alpha=.5) +
   labs(title='Boxplot of Monthly Income by Overall Satisfaction Score',
        x='Overall Satisfaction Score', y='Monthly Income')
 plot(g8)
+## not much difference in medians and promoter more skewed
 
-# PLOT 8 - BOXPLOT OF SATISFACTION BY LAST SALARY HIKE
+# PLOT 9 - BOXPLOT OF SATISFACTION BY LAST SALARY HIKE
 g9 <- ggplot(employee_factor, aes(Overall_SatisfactionScore, LastSalaryHike)) +
   geom_boxplot(fill='thistle3', alpha=.5) +
   labs(title='Boxplot of Last Salary Hike by Overall Satisfaction Score',
        x='Overall Satisfaction Score', y='Last Salary Hike')
 plot(g9)
+## detractor votes more skewed
 
 # set up the plotting area for boxplot comparisons and plot
+?gridExtra
 grid.arrange(g5,g6,g8,g9, nrow=2,ncol=2)
-?`gridExtra-package`
 
 # minor cleaning -- removing variables due to plots & nature of study
 employee <- employee %>%
   select(-`EducationTypeBio-technology`, -EducationTypeEconomics, 
          -`EducationTypeMarketing / Finance`, -`EducationTypePhycology / Behavior Sciences`, 
-         -MaritalStatus)
+         -MaritalStatus, -Education)
 
 employee_factor <- employee_factor %>%
   select(-EmployeeID, -Education, -EducationType, -MaritalStatus)
@@ -425,20 +427,6 @@ par(mfrow = c(1,1))
 plot(hc.complete.corr, labels = colnames(diss_mat))
 abline(h = 0.982, col = 'violet')
 
-
-# not using absolute value creates a similarity matrix???
-# different dendograms to one above
-dissimilarity_matrix_2 <- as.matrix(1-correlation_matrix)
-  
-hc9 <- hclust(as.dist(dissimilarity_matrix_2), method = "complete")
-plot(hc9, main = "Hierarchical Clustering with correlation - Scaled Complete")
-
-hc10 <- hclust(as.dist(dissimilarity_matrix_2), method = "single")
-plot(hc10, main = "Hierarchical Clustering with correlation - Scaled Single")
-
-hc11 <- hclust(as.dist(dissimilarity_matrix_2), method = "average")
-plot(hc11, main = "Hierarchical Clustering with correlation - Scaled Average")
-
 # a <- cutree(hc9, k = 5)
 # b <- cutree(hc10, k = 5)
 # c <- cutree(hc11, k = 5)
@@ -464,8 +452,8 @@ plot(hc11, main = "Hierarchical Clustering with correlation - Scaled Average")
 
 # set seed for reproducibility within resampling
 set.seed(5432)
-# 70% of data randomly sampled into training
-train_index <- sample(nrow(employee_factor), 0.7 * nrow(employee_factor))
+# 80% of data randomly sampled into training
+train_index <- sample(nrow(employee_factor), 0.8 * nrow(employee_factor))
 # creating train & test subset 
 train <- employee_factor[train_index, ]
 test <- employee_factor[-train_index, ]
@@ -478,6 +466,7 @@ summary(tree_model)
 tree_model
 plot(tree_model)
 text(tree_model, pretty = 0)
+
 summary(tree_model2)
 plot(tree_model2)
 text(tree_model2, pretty = 0)
@@ -525,15 +514,7 @@ view(rf_importance2)
 plot(rf_model2)
 
 
-# resampling using bootstrapping and applying to tree and forest
-bootstrap_fn <- function(employee_factor, index) {
-  model <- randomForest(Overall_SatisfactionScore ~ ., 
-                        data = employee_factor[index, ], 
-                        ntree = 300)
-  return(mean(abs(predict(model, newdata = data[-index, ]) - data$satisfaction[-index])))
-}
-
-#trying bagging
+# bagging
 ?bagging
 
 bag_employee <- bagging(Overall_SatisfactionScore ~ ., 
@@ -555,9 +536,12 @@ print(VI_plot)
 barplot(VI_plot$Overall,
         names.arg=rownames(VI_plot),
         horiz=TRUE,
-        col='steelblue',
+        col='palevioletred4',
         xlab='Variable Importance')
 
+# https://www.statology.org/bagging-in-r/
+
+# using model to make predictions
 
 
 
