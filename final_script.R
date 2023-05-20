@@ -487,7 +487,7 @@ test.table <- table(tree.pred, test$Overall_SatisfactionScore)
 ?randomForest
 rf_model <- randomForest(Overall_SatisfactionScore ~ ., 
                          data = train, 
-                         ntree = 300,
+                         ntree = 200,
                          importance = TRUE)
 rf_importance <- importance(rf_model)
 view(rf_importance)
@@ -497,7 +497,7 @@ plot(rf_model)
 # random forest summary and plot on whole dataset
 rf_model2 <- randomForest(Overall_SatisfactionScore ~ ., 
                          data = employee_factor, 
-                         ntree = 300,
+                         ntree = 200,
                          importance = TRUE)
 rf_importance2 <- importance(rf_model2)
 view(rf_importance2)
@@ -508,7 +508,7 @@ plot(rf_model2)
 ?bagging
 bag_employee <- bagging(Overall_SatisfactionScore ~ ., 
                             data = train, 
-                            nbagg = 300,
+                            nbagg = 250,
                             coob = TRUE)
 bag_employee
 # OOB misclassification error = 0.431
