@@ -13,7 +13,7 @@ library(reshape2)       ## for correlation plot
 library(tree)
 library(randomForest) 
 library(ipred)          ## for bagging
-library(caret)          ## for calculating variable importance
+library(caret)          ## for finding variable importance
 
 # load data
 employee <- read.csv("employee_dataset.csv", sep = ";")
@@ -409,13 +409,13 @@ dev.off()
 diss_mat <- as.matrix(1-abs(corr_mat))
 par(mfrow = c(1,3))
 
-hc.complete.corr <- hclust(as.dist(corr_mat), method = "complete")
+hc.complete.corr <- hclust(as.dist(diss_mat), method = "complete")
 plot(hc.complete.corr, main = "Hierarchical Clustering with correlation - Scaled Complete")
 
-hc.average.corr <- hclust(as.dist(corr_mat), method = "average")
+hc.average.corr <- hclust(as.dist(diss_mat), method = "average")
 plot(hc.average.corr, main = "Hierarchical Clustering with correlation - Scaled Average")
 
-hc.single.corr <- hclust(as.dist(corr_mat), method = "single")
+hc.single.corr <- hclust(as.dist(diss_mat), method = "single")
 plot(hc.single.corr, main = "Hierarchical Clustering with correlation - Scaled Single")
   
 # outputs of clusters of similar variables (6 clusters)
@@ -429,21 +429,26 @@ view(cluster_single)
 # plot threshold to identify clusters FROM XXX LINKAGE (6)
 par(mfrow = c(1,1))
 plot(hc.complete.corr, labels = colnames(diss_mat))
-abline(h = 0.036, col = 'violet')
+abline(h = 0.981, col = 'violet')
 
 
 # Inference - Trees, Random Forests & Bagging ------------------------------
 
+# removing years in current role as it's highly correlated to years at company
+employee <- employee %>%
+  select(-Years_InCurrentRole)
+
+employee_factor <- employee_factor %>%
+  select(-Years_InCurrentRole)
+
 # fit a decision tree explaining the overall employee satisfaction score 
-# variables with all other variables in the employee dataset
+# variables with all other variables being used for inference
 
 # set seed for reproducibility within resampling
-set.seed(543)
-set.seed(54321)
 set.seed(111)
 # 80% of data randomly sampled into training
 train_index <- sample(nrow(employee_factor), 0.8 * nrow(employee_factor))
-# creating train & test subset 
+# creating train & test subsets
 train <- employee_factor[train_index, ]
 test <- employee_factor[-train_index, ]
 
@@ -451,8 +456,10 @@ test <- employee_factor[-train_index, ]
 tree_model <- tree(Overall_SatisfactionScore ~ ., data = train)
 summary(tree_model)
 tree_model
+# misclassification error rate of 0.366 - too high
 plot(tree_model)
 text(tree_model, pretty = 0)
+# total experience, monthly income & age are key factors influencing satisfaction 
 
 # decision tree on whole dataset 
 tree_model2 <- tree(Overall_SatisfactionScore ~ ., data = employee_factor)
@@ -461,44 +468,37 @@ plot(tree_model2)
 text(tree_model2, pretty = 0)
 ## both branches show promoter
 
-# let's prune the tree with the same approach as earlier
-cv.employee <- cv.tree(tree_model)
-plot(cv.employee$size, cv.employee$dev, type='b')
-# identify the size of the best fitting tree
-best.employee <- cv.employee$size[cv.employee$dev==min(cv.employee$dev)]
+# estimating the test error 
+## predict for test cases using the fitted model
+tree.pred <- predict(tree_model, test, type="class")
+# use cross table to check how predictions match the test outcomes
+test.table <- table(tree.pred, test$Overall_SatisfactionScore)
+# the % of cases classified correctly:
+(test.table[1,1] + test.table[2,2]) / sum(test.table)
+# 0.568 - classification error rate is not high enough
 
-# prune tree to optimal size (note: it may be the same as the original tree)
-prune.employee <- prune.tree(tree_model, best=best.employee)
-prune.employee
-# plot the pruned tree
-plot(prune.employee)
-text(prune.employee)
+# # prune initial tree 
+# cv.employee <- cv.tree(tree_model)
+# plot(cv.employee$size, cv.employee$dev, type='b')
+# # identify the size of the best fitting tree
+# best.employee <- cv.employee$size[cv.employee$dev==min(cv.employee$dev)]
 
-
-
-# random forest
+# random forest summary and plot on training subset
 ?randomForest
 rf_model <- randomForest(Overall_SatisfactionScore ~ ., 
                          data = train, 
                          ntree = 300,
                          importance = TRUE)
-rf_model
-rf_model2 <- randomForest(Overall_SatisfactionScore ~ ., 
-                         data = employee_factor, 
-                         ntree = 300,
-                         importance = TRUE)
-rf <- randomForest(factor(Overall_SatisfactionScore)~.,
-                   data = employee_factor,
-                   ntree=500,
-                   type='classification')
-rf
-view(importance(rf))
-plot(rf)
-# random forest summary & plot
 rf_importance <- importance(rf_model)
 view(rf_importance)
 rf_model
 plot(rf_model)
+
+# random forest summary and plot on whole dataset
+rf_model2 <- randomForest(Overall_SatisfactionScore ~ ., 
+                         data = employee_factor, 
+                         ntree = 300,
+                         importance = TRUE)
 rf_importance2 <- importance(rf_model2)
 view(rf_importance2)
 plot(rf_model2)
@@ -506,33 +506,27 @@ plot(rf_model2)
 
 # bagging
 ?bagging
-
 bag_employee <- bagging(Overall_SatisfactionScore ~ ., 
                             data = train, 
-                            nbagg = 200,
+                            nbagg = 300,
                             coob = TRUE)
 bag_employee
+# OOB misclassification error = 0.431
 
-# visualize the importance of the predictor variables 
-# by calculating the total reduction in RSS
-#calculate variable importance
+# list importance of the predictor variables 
+VI_vector <- varImp(bag_employee)
+# calculate variable importance
 VI <- data.frame(var=names(train[,-1]), imp=varImp(bag_employee))
 
-#sort variable importance descending
+# sort variable importance descending
 VI_plot <- VI[order(VI$Overall, decreasing=TRUE),]
 print(VI_plot)
 
-#visualize variable importance with horizontal bar plot
+#visualise variable importance with horizontal bar plot
 barplot(VI_plot$Overall,
         names.arg=rownames(VI_plot),
         horiz=TRUE,
         col='palevioletred4',
         xlab='Variable Importance')
 
-# https://www.statology.org/bagging-in-r/
-
-# using model to make predictions
-
-
-
-
+# OOB gives internal estimate of predictive performance - no need to use test
